@@ -1,6 +1,9 @@
 name: Build
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
 
 jobs:
   build:
@@ -25,6 +28,9 @@ jobs:
       # You can run `git update-index --chmod +x gradlew` then remove this step.
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
+
+      - name: Validate Conventional Commits
+        run: ./gradlew validateConventionalCommits
 
       - name: Build with Gradle
         run: ./gradlew build

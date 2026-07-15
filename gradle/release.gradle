@@ -1,0 +1,364 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        // Keep the script API aligned with git-changelog Gradle Plugin 3.1.2.
+        classpath 'se.bjurr.gitchangelog:git-changelog-lib:2.6.3'
+    }
+}
+
+import com.github.jknack.handlebars.Helper
+import com.github.jknack.handlebars.Options
+import se.bjurr.gitchangelog.api.GitChangelogApi
+import se.bjurr.gitchangelog.internal.semantic.ConventionalCommitParser
+
+import java.time.LocalDate
+import java.util.regex.Pattern
+
+def releaseTagPattern = Pattern.compile('^v(\\d+)\\.(\\d+)\\.(\\d+)$')
+def conventionalHeaderPattern = Pattern.compile('^([a-z][a-z0-9-]*)(?:\\(([^()\\r\\n]+)\\))?(!)?: (\\S.*)$')
+def majorPattern = '(?m)^[a-z][a-z0-9-]*(?:\\([^()\\r\\n]+\\))?!:'
+def minorPattern = '(?m)^feat(?:\\([^()\\r\\n]+\\))?!?:'
+def patchPattern = '(?m)^(?:fix|perf|revert)(?:\\([^()\\r\\n]+\\))?!?:'
+def ignoredTagPattern = '^(?!v\\d+\\.\\d+\\.\\d+$).*$'
+def ignoredCommitPattern = '(?m)^chore\\(release\\): v\\d+\\.\\d+\\.\\d+$|^Merge .*'
+def knownChangelogTypes = ['feat', 'fix', 'perf', 'revert', 'refactor', 'docs', 'test', 'build', 'ci', 'chore', 'style'] as Set
+
+def git = { List<String> arguments, boolean allowFailure = false ->
+    def command = ['git', '-c', "safe.directory=${rootDir.absolutePath}"] + arguments
+    def execution = providers.exec {
+        workingDir(rootDir)
+        commandLine(command)
+        ignoreExitValue = true
+    }
+    def result = execution.result.get()
+    def output = execution.standardOutput.asText.get().trim()
+    def error = execution.standardError.asText.get().trim()
+
+    if (result.exitValue != 0 && !allowFailure) {
+        throw new GradleException("Команда `${command.join(' ')}` завершилась с ошибкой:\n${error ?: output}")
+    }
+
+    [exitCode: result.exitValue, stdout: output, stderr: error]
+}
+
+def latestReleaseTag = {
+    git(['tag', '--list', '--merged', 'HEAD', '--sort=-version:refname'], true).stdout
+            .readLines()
+            .find { releaseTagPattern.matcher(it).matches() }
+}
+
+def parseVersion = { String version ->
+    def matcher = Pattern.compile('^(\\d+)\\.(\\d+)\\.(\\d+)$').matcher(version)
+    if (!matcher.matches()) {
+        throw new GradleException("Некорректная SemVer-версия: ${version}")
+    }
+    [major: matcher.group(1).toInteger(), minor: matcher.group(2).toInteger(), patch: matcher.group(3).toInteger()]
+}
+
+def bumpVersion = { Map base, String step ->
+    switch (step) {
+        case 'major': return "${base.major + 1}.0.0"
+        case 'minor': return "${base.major}.${base.minor + 1}.0"
+        case 'patch': return "${base.major}.${base.minor}.${base.patch + 1}"
+        default: return "${base.major}.${base.minor}.${base.patch}"
+    }
+}
+
+def commitsSinceLatestTag = {
+    def tag = latestReleaseTag()
+    def arguments = ['log', '--format=%H%x1f%P%x1f%B%x1e']
+    if (tag) {
+        arguments.add("${tag}..HEAD")
+    }
+    def raw = git(arguments).stdout
+    if (!raw) {
+        return []
+    }
+
+    raw.split('\\u001e')
+            .collect { it.trim() }
+            .findAll { !it.isEmpty() }
+            .collect { record ->
+                def parts = record.split('\\u001f', 3)
+                if (parts.length != 3) {
+                    throw new GradleException('Не удалось разобрать историю Git для проверки коммитов.')
+                }
+                [
+                        hash   : parts[0],
+                        parents: parts[1].trim().isEmpty() ? [] : parts[1].trim().split(' ') as List,
+                        message: parts[2].trim()
+                ]
+            }
+            .findAll { it.parents.size() <= 1 }
+}
+
+def inferStep = { List<Map> commits ->
+    if (commits.any { ConventionalCommitParser.commitBreaking(it.message) }) {
+        return 'major'
+    }
+    if (commits.any { it.message =~ minorPattern }) {
+        return 'minor'
+    }
+    if (commits.any { it.message =~ patchPattern }) {
+        return 'patch'
+    }
+    'none'
+}
+
+def semanticApi = {
+    GitChangelogApi.gitChangelogApiBuilder()
+            .withFromRepo(rootDir)
+            .withToRevision('HEAD')
+            .withIgnoreTagsIfNameMatches(ignoredTagPattern)
+            .withReadableTagName('^v(.+)$')
+            .withIgnoreCommitsWithMessage(ignoredCommitPattern)
+            .withSemanticMajorVersionPattern(majorPattern)
+            .withSemanticMinorVersionPattern(minorPattern)
+            .withSemanticPatchVersionPattern(patchPattern)
+            .withUseIntegrations(false)
+}
+
+def validateCommits = {
+    def invalid = commitsSinceLatestTag().findAll { commit ->
+        def lines = commit.message.readLines()
+        lines.isEmpty() || !conventionalHeaderPattern.matcher(lines.first()).matches()
+    }
+    if (!invalid.isEmpty()) {
+        def details = invalid.collect { "${it.hash.take(7)} ${it.message.readLines().first()}" }.join('\n  - ')
+        throw new GradleException("Найдены коммиты, не соответствующие Conventional Commits:\n  - ${details}")
+    }
+}
+
+def storedVersion = providers.gradleProperty('mod_version').get()
+parseVersion(storedVersion)
+
+def resolveReleasePlan = {
+    def commits = commitsSinceLatestTag()
+    def inferredStep = inferStep(commits)
+    def requestedStep = providers.gradleProperty('releaseType').getOrNull()
+    def allowedSteps = ['patch': 1, 'minor': 2, 'major': 3]
+    if (requestedStep != null && !allowedSteps.containsKey(requestedStep)) {
+        throw new GradleException('releaseType должен быть одним из: major, minor, patch.')
+    }
+    if (requestedStep == null && inferredStep == 'none') {
+        throw new GradleException('Нет изменений, автоматически повышающих версию. Используйте -PreleaseType=major|minor|patch осознанно.')
+    }
+    if (requestedStep != null && inferredStep != 'none' && allowedSteps[requestedStep] < allowedSteps[inferredStep]) {
+        throw new GradleException("Нельзя понизить требуемый уровень ${inferredStep} до ${requestedStep}.")
+    }
+
+    def tag = latestReleaseTag()
+    def baseVersion = tag ? tag.substring(1) : storedVersion
+    def targetStep = requestedStep ?: inferredStep
+    def targetVersion = bumpVersion(parseVersion(baseVersion), targetStep)
+    def pluginVersion = semanticApi().getNextSemanticVersion().version
+    def expectedInferredVersion = bumpVersion(parseVersion(baseVersion), inferredStep)
+    if (pluginVersion != expectedInferredVersion) {
+        throw new GradleException("Плагин вычислил ${pluginVersion}, ожидалось ${expectedInferredVersion}. Bump остановлен.")
+    }
+
+    def targetTag = "v${targetVersion}".toString()
+    if (!git(['tag', '--list', targetTag]).stdout.isEmpty()) {
+        throw new GradleException("Тег ${targetTag} уже существует.")
+    }
+
+    [version: targetVersion, tag: targetTag]
+}
+
+// A tagged release uses the clean stored version. Every other Git build is clearly marked as development.
+def repositoryAvailable = git(['rev-parse', '--is-inside-work-tree'], true).exitCode == 0
+if (repositoryAvailable) {
+    def expectedReleaseTag = "v${storedVersion}".toString()
+    def exactReleaseTag = git(['tag', '--points-at', 'HEAD'], true).stdout.readLines().contains(expectedReleaseTag)
+    if (!exactReleaseTag) {
+        def tag = latestReleaseTag()
+        def baseVersion = tag ? tag.substring(1) : storedVersion
+        def step = inferStep(commitsSinceLatestTag())
+        def nextVersion = bumpVersion(parseVersion(baseVersion), step == 'none' ? 'patch' : step)
+        def shortHash = git(['rev-parse', '--short=7', 'HEAD']).stdout
+        version = "${nextVersion}-dev.${shortHash}"
+    }
+}
+
+tasks.named('gitChangelog').configure {
+    enabled = false
+    description = 'Отключено: используйте bump, который атомарно управляет всем release-flow.'
+}
+
+tasks.named('gitChangelogSemanticVersion').configure {
+    enabled = false
+    description = 'Отключено: используйте bump, который обновляет mod_version, а не Gradle property version.'
+}
+
+def releasePreflight = tasks.register('releasePreflight') {
+    group = 'release'
+    description = 'Проверяет состояние Git перед выпуском.'
+    notCompatibleWithConfigurationCache('Задача проверяет живое состояние Git.')
+
+    doLast {
+        if (git(['branch', '--show-current']).stdout != 'main') {
+            throw new GradleException('Bump разрешён только из ветки main.')
+        }
+        if (!git(['status', '--porcelain', '--untracked-files=all']).stdout.isEmpty()) {
+            throw new GradleException('Перед bump рабочее дерево должно быть чистым.')
+        }
+
+        def tag = latestReleaseTag()
+        if (tag && tag.substring(1) != storedVersion) {
+            throw new GradleException("mod_version=${storedVersion} не совпадает с последним тегом ${tag}.")
+        }
+        if (!tag && storedVersion != '0.0.0') {
+            throw new GradleException('До первого релиза mod_version должен быть равен 0.0.0.')
+        }
+        if (commitsSinceLatestTag().isEmpty()) {
+            throw new GradleException('После последнего релиза нет новых коммитов.')
+        }
+
+        validateCommits()
+        resolveReleasePlan()
+    }
+}
+
+def validateConventionalCommits = tasks.register('validateConventionalCommits') {
+    group = 'verification'
+    description = 'Проверяет Conventional Commits после последнего релизного тега.'
+    notCompatibleWithConfigurationCache('Задача читает живую историю Git.')
+
+    doLast {
+        validateCommits()
+        logger.lifecycle('Все коммиты после последнего релизного тега корректны.')
+    }
+}
+
+validateConventionalCommits.configure {
+    mustRunAfter(releasePreflight)
+}
+tasks.named('build').configure {
+    mustRunAfter(validateConventionalCommits)
+}
+
+def commitType = { commit ->
+    def matcher = conventionalHeaderPattern.matcher(commit.messageTitle)
+    matcher.matches() ? matcher.group(1) : null
+}
+def isBreaking = { commit -> ConventionalCommitParser.commitBreaking(commit.message) }
+def typesFromOptions = { Options options ->
+    (options.hash('types', '') as String).split(',').collect { it.trim() }.findAll { !it.isEmpty() } as Set
+}
+def configureTemplateHelpers = { GitChangelogApi api ->
+    api.withHandlebarsHelper('ifContainsNonBreakingTypes', { Object context, Options options ->
+        def types = typesFromOptions(options)
+        def found = (context as Collection).any { !isBreaking(it) && types.contains(commitType(it)) }
+        found ? options.fn(context) : options.inverse(context)
+    } as Helper)
+    api.withHandlebarsHelper('ifCommitNonBreakingTypes', { Object context, Options options ->
+        def types = typesFromOptions(options)
+        (!isBreaking(context) && types.contains(commitType(context))) ? options.fn(context) : options.inverse(context)
+    } as Helper)
+    api.withHandlebarsHelper('ifContainsOtherCommits', { Object context, Options options ->
+        def found = (context as Collection).any { !isBreaking(it) && !knownChangelogTypes.contains(commitType(it)) }
+        found ? options.fn(context) : options.inverse(context)
+    } as Helper)
+    api.withHandlebarsHelper('ifOtherCommit', { Object context, Options options ->
+        (!isBreaking(context) && !knownChangelogTypes.contains(commitType(context))) ? options.fn(context) : options.inverse(context)
+    } as Helper)
+    api
+}
+
+def renderChangelog = { String releaseVersion ->
+    def api = semanticApi()
+            .withUntaggedName(releaseVersion)
+            .withDateFormat('yyyy-MM-dd')
+            .withTimeZone('Europe/Moscow')
+            .withTemplateContent(file('gradle/changelog.hbs').getText('UTF-8'))
+            .withExtendedVariables([
+                    releaseDate: LocalDate.now().toString()
+            ])
+    configureTemplateHelpers(api).render().replaceAll('(?m)[ \\t]+$', '').trim() + System.lineSeparator()
+}
+
+tasks.register('releaseNotes') {
+    group = 'release'
+    description = 'Извлекает из CHANGELOG.md notes для одной версии.'
+    notCompatibleWithConfigurationCache('Задача читает releaseVersion и CHANGELOG.md во время выполнения.')
+    def requestedReleaseVersion = providers.gradleProperty('releaseVersion').orElse(storedVersion)
+    def notesFile = layout.buildDirectory.file('release-notes.md')
+    inputs.property('releaseVersion', requestedReleaseVersion)
+    inputs.file(layout.projectDirectory.file('CHANGELOG.md'))
+    outputs.file(notesFile)
+
+    doLast {
+        def requestedVersion = requestedReleaseVersion.get()
+        parseVersion(requestedVersion)
+        def changelog = file('CHANGELOG.md')
+        if (!changelog.isFile()) {
+            throw new GradleException('CHANGELOG.md не найден.')
+        }
+
+        def lines = changelog.readLines('UTF-8')
+        def start = lines.findIndexOf { it.startsWith("## [${requestedVersion}]") }
+        if (start < 0) {
+            throw new GradleException("В CHANGELOG.md нет раздела ${requestedVersion}.")
+        }
+        def end = (start + 1..<lines.size()).find { lines[it].startsWith('## [') } ?: lines.size()
+        def body = lines[(start + 1)..<end].join(System.lineSeparator()).trim()
+        if (body.isEmpty()) {
+            throw new GradleException("Раздел ${requestedVersion} в CHANGELOG.md пуст.")
+        }
+        notesFile.get().asFile.with {
+            parentFile.mkdirs()
+            setText(body + System.lineSeparator(), 'UTF-8')
+        }
+    }
+}
+
+tasks.register('bump') {
+    group = 'release'
+    description = 'Собирает проект, повышает версию, обновляет changelog и создаёт commit/tag.'
+    dependsOn(releasePreflight, validateConventionalCommits, tasks.named('build'))
+    notCompatibleWithConfigurationCache('Задача изменяет Git-репозиторий и создаёт commit/tag.')
+
+    doLast {
+        validateCommits()
+        def plan = resolveReleasePlan()
+        def targetVersion = plan.version
+        def targetTag = plan.tag
+
+        def propertiesFile = file('gradle.properties')
+        def changelogFile = file('CHANGELOG.md')
+        def originalProperties = propertiesFile.getText('UTF-8')
+        def changelogExisted = changelogFile.exists()
+        def originalChangelog = changelogExisted ? changelogFile.getText('UTF-8') : null
+        def committed = false
+
+        try {
+            def updatedProperties = originalProperties.replaceFirst('(?m)^mod_version=.*$', "mod_version=${targetVersion}")
+            if (updatedProperties == originalProperties) {
+                throw new GradleException('В gradle.properties не найден mod_version.')
+            }
+            propertiesFile.setText(updatedProperties, 'UTF-8')
+            changelogFile.setText(renderChangelog(targetVersion), 'UTF-8')
+
+            git(['add', '--', 'gradle.properties', 'CHANGELOG.md'])
+            git(['commit', '-m', "chore(release): ${targetTag}"])
+            committed = true
+            git(['tag', '-a', targetTag, '-m', "Spellroot ${targetVersion}"])
+        } catch (Exception failure) {
+            if (!committed) {
+                propertiesFile.setText(originalProperties, 'UTF-8')
+                if (changelogExisted) {
+                    changelogFile.setText(originalChangelog, 'UTF-8')
+                } else if (changelogFile.exists()) {
+                    changelogFile.delete()
+                }
+                git(['reset', '-q', 'HEAD', '--', 'gradle.properties', 'CHANGELOG.md'], true)
+            }
+            throw failure
+        }
+
+        logger.lifecycle("Созданы commit chore(release): ${targetTag} и аннотированный тег ${targetTag}.")
+        logger.lifecycle('Проверьте результат и выполните: git push origin main --follow-tags')
+    }
+}

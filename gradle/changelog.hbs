@@ -1,0 +1,96 @@
+# История изменений
+
+Все заметные изменения Spellroot перечислены в этом файле. Файл генерируется из Conventional Commits; ручные изменения будут перезаписаны при следующем выпуске.
+
+{{#tags}}
+## [{{name}}](https://github.com/{{ownerName}}/{{repoName}}/releases/tag/v{{name}}) — {{#hasTagTime}}{{tagDate .}}{{/hasTagTime}}{{^hasTagTime}}{{releaseDate}}{{/hasTagTime}}
+
+{{#ifContainsBreaking commits}}
+### Критические изменения
+
+{{#commits}}
+{{#ifCommitBreaking .}}- {{#eachCommitScope .}}**{{.}}:** {{/eachCommitScope}}{{{commitDescription .}}}{{#eachCommitFooter . tokenMatching='BREAKING(?: |-)?CHANGE'}} — {{{value}}}{{/eachCommitFooter}} ([{{hash}}](https://github.com/{{ownerName}}/{{repoName}}/commit/{{hashFull}}))
+{{/ifCommitBreaking}}
+{{/commits}}
+{{/ifContainsBreaking}}
+{{#ifContainsNonBreakingTypes commits types='feat'}}
+### Возможности
+
+{{#commits}}
+{{#ifCommitNonBreakingTypes . types='feat'}}- {{#eachCommitScope .}}**{{.}}:** {{/eachCommitScope}}{{{commitDescription .}}} ([{{hash}}](https://github.com/{{ownerName}}/{{repoName}}/commit/{{hashFull}}))
+{{/ifCommitNonBreakingTypes}}
+{{/commits}}
+{{/ifContainsNonBreakingTypes}}
+{{#ifContainsNonBreakingTypes commits types='fix'}}
+### Исправления
+
+{{#commits}}
+{{#ifCommitNonBreakingTypes . types='fix'}}- {{#eachCommitScope .}}**{{.}}:** {{/eachCommitScope}}{{{commitDescription .}}} ([{{hash}}](https://github.com/{{ownerName}}/{{repoName}}/commit/{{hashFull}}))
+{{/ifCommitNonBreakingTypes}}
+{{/commits}}
+{{/ifContainsNonBreakingTypes}}
+{{#ifContainsNonBreakingTypes commits types='perf'}}
+### Производительность
+
+{{#commits}}
+{{#ifCommitNonBreakingTypes . types='perf'}}- {{#eachCommitScope .}}**{{.}}:** {{/eachCommitScope}}{{{commitDescription .}}} ([{{hash}}](https://github.com/{{ownerName}}/{{repoName}}/commit/{{hashFull}}))
+{{/ifCommitNonBreakingTypes}}
+{{/commits}}
+{{/ifContainsNonBreakingTypes}}
+{{#ifContainsNonBreakingTypes commits types='revert'}}
+### Откаты
+
+{{#commits}}
+{{#ifCommitNonBreakingTypes . types='revert'}}- {{#eachCommitScope .}}**{{.}}:** {{/eachCommitScope}}{{{commitDescription .}}} ([{{hash}}](https://github.com/{{ownerName}}/{{repoName}}/commit/{{hashFull}}))
+{{/ifCommitNonBreakingTypes}}
+{{/commits}}
+{{/ifContainsNonBreakingTypes}}
+{{#ifContainsNonBreakingTypes commits types='refactor'}}
+### Рефакторинг
+
+{{#commits}}
+{{#ifCommitNonBreakingTypes . types='refactor'}}- {{#eachCommitScope .}}**{{.}}:** {{/eachCommitScope}}{{{commitDescription .}}} ([{{hash}}](https://github.com/{{ownerName}}/{{repoName}}/commit/{{hashFull}}))
+{{/ifCommitNonBreakingTypes}}
+{{/commits}}
+{{/ifContainsNonBreakingTypes}}
+{{#ifContainsNonBreakingTypes commits types='docs'}}
+### Документация
+
+{{#commits}}
+{{#ifCommitNonBreakingTypes . types='docs'}}- {{#eachCommitScope .}}**{{.}}:** {{/eachCommitScope}}{{{commitDescription .}}} ([{{hash}}](https://github.com/{{ownerName}}/{{repoName}}/commit/{{hashFull}}))
+{{/ifCommitNonBreakingTypes}}
+{{/commits}}
+{{/ifContainsNonBreakingTypes}}
+{{#ifContainsNonBreakingTypes commits types='test'}}
+### Тесты
+
+{{#commits}}
+{{#ifCommitNonBreakingTypes . types='test'}}- {{#eachCommitScope .}}**{{.}}:** {{/eachCommitScope}}{{{commitDescription .}}} ([{{hash}}](https://github.com/{{ownerName}}/{{repoName}}/commit/{{hashFull}}))
+{{/ifCommitNonBreakingTypes}}
+{{/commits}}
+{{/ifContainsNonBreakingTypes}}
+{{#ifContainsNonBreakingTypes commits types='build,ci'}}
+### Сборка и CI
+
+{{#commits}}
+{{#ifCommitNonBreakingTypes . types='build,ci'}}- {{#eachCommitScope .}}**{{.}}:** {{/eachCommitScope}}{{{commitDescription .}}} ([{{hash}}](https://github.com/{{ownerName}}/{{repoName}}/commit/{{hashFull}}))
+{{/ifCommitNonBreakingTypes}}
+{{/commits}}
+{{/ifContainsNonBreakingTypes}}
+{{#ifContainsNonBreakingTypes commits types='chore,style'}}
+### Обслуживание
+
+{{#commits}}
+{{#ifCommitNonBreakingTypes . types='chore,style'}}- {{#eachCommitScope .}}**{{.}}:** {{/eachCommitScope}}{{{commitDescription .}}} ([{{hash}}](https://github.com/{{ownerName}}/{{repoName}}/commit/{{hashFull}}))
+{{/ifCommitNonBreakingTypes}}
+{{/commits}}
+{{/ifContainsNonBreakingTypes}}
+{{#ifContainsOtherCommits commits}}
+### Прочее
+
+{{#commits}}
+{{#ifOtherCommit .}}- {{#eachCommitScope .}}**{{.}}:** {{/eachCommitScope}}{{{commitDescription .}}} ([{{hash}}](https://github.com/{{ownerName}}/{{repoName}}/commit/{{hashFull}}))
+{{/ifOtherCommit}}
+{{/commits}}
+{{/ifContainsOtherCommits}}
+{{/tags}}
