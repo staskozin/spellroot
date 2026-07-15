@@ -244,7 +244,7 @@ def commitType = { commit ->
     def matcher = conventionalHeaderPattern.matcher(commit.messageTitle)
     matcher.matches() ? matcher.group(1) : null
 }
-def isBreaking = { Object commit -> ConventionalCommitParser.commitBreaking(((Commit) commit).message) }
+def isBreaking = { Object commit -> ConventionalCommitParser.commitBreaking(((Commit) commit).getMessage()) }
 def typesFromOptions = { Options options ->
     (options.hash('types', '') as String).split(',').collect { it.trim() }.findAll { !it.isEmpty() } as Set
 }
