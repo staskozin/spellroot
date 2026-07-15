@@ -96,7 +96,7 @@ def commitsSinceLatestTag = {
 }
 
 def inferStep = { List<Map> commits ->
-    if (commits.any { ConventionalCommitParser.commitBreaking(it.message) }) {
+    if (commits.any { Map commit -> ConventionalCommitParser.commitBreaking((String) commit.message) }) {
         return 'major'
     }
     if (commits.any { it.message =~ minorPattern }) {
