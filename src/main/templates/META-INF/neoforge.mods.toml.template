@@ -6,6 +6,7 @@ modId="spellroot"
 version="${mod_version}"
 displayName="${mod_name}"
 displayURL="https://github.com/staskozin/spellroot"
+logoFile="spellroot.png"
 authors="Stanislav Kozin"
 description='''
 Spellroot is a Minecraft mod for NeoForge.
