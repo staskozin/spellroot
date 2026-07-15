@@ -1,0 +1,26 @@
+license="${mod_license}"
+issueTrackerURL="https://github.com/staskozin/spellroot/issues"
+
+[[mods]]
+modId="spellroot"
+version="${mod_version}"
+displayName="${mod_name}"
+displayURL="https://github.com/staskozin/spellroot"
+authors="Stanislav Kozin"
+description='''
+Spellroot is a Minecraft mod for NeoForge.
+'''
+
+[[dependencies.spellroot]]
+    modId="neoforge"
+    type="required"
+    versionRange="[${neo_version},)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.spellroot]]
+    modId="minecraft"
+    type="required"
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"

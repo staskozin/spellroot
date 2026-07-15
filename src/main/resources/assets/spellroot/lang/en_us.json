@@ -1,14 +1,3 @@
 {
-  "itemGroup.spellroot": "Example Mod Tab",
-  "block.spellroot.example_block": "Example Block",
-  "item.spellroot.example_item": "Example Item",
-  "item.spellroot.ender_focus": "Ender Focus",
-
-  "spellroot.configuration.title": "Spellroot Configs",
-  "spellroot.configuration.section.spellroot.common.toml": "Spellroot Configs",
-  "spellroot.configuration.section.spellroot.common.toml.title": "Spellroot Configs",
-  "spellroot.configuration.items": "Item List",
-  "spellroot.configuration.logDirtBlock": "Log Dirt Block",
-  "spellroot.configuration.magicNumberIntroduction": "Magic Number Text",
-  "spellroot.configuration.magicNumber": "Magic Number"
+  "item.spellroot.ender_focus": "Ender Focus"
 }
