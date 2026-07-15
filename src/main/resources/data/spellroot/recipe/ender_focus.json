@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": "minecraft:amethyst_shard",
+    "E": "minecraft:ender_pearl",
+    "M": "minecraft:copper_ingot"
+  },
+  "pattern": [
+    "MAM",
+    "AEA",
+    "MAM"
+  ],
+  "result": {
+    "count": 1,
+    "id": "spellroot:ender_focus"
+  }
+}
