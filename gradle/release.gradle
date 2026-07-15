@@ -11,6 +11,7 @@ buildscript {
 import com.github.jknack.handlebars.Helper
 import com.github.jknack.handlebars.Options
 import se.bjurr.gitchangelog.api.GitChangelogApi
+import se.bjurr.gitchangelog.api.model.Commit
 import se.bjurr.gitchangelog.internal.semantic.ConventionalCommitParser
 
 import java.time.LocalDate
@@ -243,7 +244,7 @@ def commitType = { commit ->
     def matcher = conventionalHeaderPattern.matcher(commit.messageTitle)
     matcher.matches() ? matcher.group(1) : null
 }
-def isBreaking = { commit -> ConventionalCommitParser.commitBreaking(commit.message) }
+def isBreaking = { Object commit -> ConventionalCommitParser.commitBreaking(((Commit) commit).message) }
 def typesFromOptions = { Options options ->
     (options.hash('types', '') as String).split(',').collect { it.trim() }.findAll { !it.isEmpty() } as Set
 }
