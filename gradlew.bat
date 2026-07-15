@@ -17,6 +17,8 @@
 @rem
 
 @if "%DEBUG%"=="" @echo off
+@rem Gradle emits UTF-8; keep Russian task output readable in the Windows console.
+@chcp 65001 >NUL 2>&1
 @rem ##########################################################################
 @rem
 @rem  Gradle startup script for Windows
