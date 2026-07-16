@@ -22,12 +22,13 @@ def conventionalHeaderPattern = Pattern.compile('^([a-z][a-z0-9-]*)(?:\\(([^()\\
 def majorPattern = '(?m)^[a-z][a-z0-9-]*(?:\\([^()\\r\\n]+\\))?!:'
 def minorPattern = '(?m)^feat(?:\\([^()\\r\\n]+\\))?!?:'
 def patchPattern = '(?m)^(?:fix|perf|revert)(?:\\([^()\\r\\n]+\\))?!?:'
-def ignoredTagPattern = '^(?!v\\d+\\.\\d+\\.\\d+$).*$'
-def ignoredCommitPattern = '(?m)^chore\\(release\\): v\\d+\\.\\d+\\.\\d+$|^Merge .*'
+def ignoredTagPattern = '^(?!(?:refs/tags/)?v\\d+\\.\\d+\\.\\d+$).*$'
+def ignoredCommitPattern = '^chore\\(release\\): v\\d+\\.\\d+\\.\\d+\\s*$|^Merge .*'
 def knownChangelogTypes = ['feat', 'fix', 'perf', 'revert', 'refactor', 'docs', 'test', 'build', 'ci', 'chore', 'style'] as Set
+def safeRootDir = rootDir.absolutePath.replace('\\', '/')
 
 def git = { List<String> arguments, boolean allowFailure = false ->
-    def command = ['git', '-c', "safe.directory=${rootDir.absolutePath}"] + arguments
+    def command = ['git', '-c', "safe.directory=${safeRootDir}"] + arguments
     def execution = providers.exec {
         workingDir(rootDir)
         commandLine(command)
@@ -113,7 +114,6 @@ def semanticApi = {
             .withFromRepo(rootDir)
             .withToRevision('HEAD')
             .withIgnoreTagsIfNameMatches(ignoredTagPattern)
-            .withReadableTagName('^v(.+)$')
             .withIgnoreCommitsWithMessage(ignoredCommitPattern)
             .withSemanticMajorVersionPattern(majorPattern)
             .withSemanticMinorVersionPattern(minorPattern)
@@ -270,8 +270,9 @@ def configureTemplateHelpers = { GitChangelogApi api ->
 
 def renderChangelog = { String releaseVersion ->
     def api = semanticApi()
+            .withReadableTagName('^(?:refs/tags/)?v(.+)$')
             .withUntaggedName(releaseVersion)
-            .withDateFormat('yyyy-MM-dd')
+            .withDateFormat('yyyy-MM-dd HH:mm:ss')
             .withTimeZone('Europe/Moscow')
             .withTemplateContent(file('gradle/changelog.hbs').getText('UTF-8'))
             .withExtendedVariables([
