@@ -2,6 +2,22 @@
 
 Все заметные изменения Spellroot перечислены в этом файле. Файл генерируется из Conventional Commits; ручные изменения будут перезаписаны при следующем выпуске.
 
+## [0.2.0](https://github.com/staskozin/spellroot/releases/tag/v0.2.0) — 2026-07-17
+
+### Возможности
+
+- **ender-focus:** реализован скачок с зарядами и маркером цели ([44768fca3623207](https://github.com/staskozin/spellroot/commit/44768fca36232076e287ccad64bea7981f869dcd))
+- **metadata:** добавлен логотип мода ([3739b8f8796da0b](https://github.com/staskozin/spellroot/commit/3739b8f8796da0bf3d5b9b8814f7a3fdd5a86bb5))
+- **ender-focus:** настроен предмет и удалён шаблонный контент ([79716573da3195b](https://github.com/staskozin/spellroot/commit/79716573da3195b1b38829bc9cdfbaba4c99bea1))
+- **ender-focus:** добавлен предмет и рецепт крафта ([8a04812d17b9673](https://github.com/staskozin/spellroot/commit/8a04812d17b967331d7765df5cdb522880b539d5))
+### Исправления
+
+- **release:** исправлен повторный выпуск версии ([20ef29f5b068a83](https://github.com/staskozin/spellroot/commit/20ef29f5b068a83695d2e2b596c836335722fbd9))
+- **ci:** исправлена публикация аннотированных тегов ([f992b23fe1e3a3a](https://github.com/staskozin/spellroot/commit/f992b23fe1e3a3a483f9feee95161c06478ce026))
+- **gradle:** исправлена кодировка вывода в Windows ([adc6cadb7b9128e](https://github.com/staskozin/spellroot/commit/adc6cadb7b9128ecb5882045906536b624675757))
+### Сборка и CI
+
+- **neoforge:** обновлён NeoForge и исправлен ввод команд сервера ([e5095a8ed33e7d1](https://github.com/staskozin/spellroot/commit/e5095a8ed33e7d182803b3627da1475619e591f5))
 ## [0.1.0](https://github.com/staskozin/spellroot/releases/tag/v0.1.0) — 2026-07-16
 
 ### Возможности
