@@ -64,6 +64,10 @@ neoForge {
     }
 }
 
+tasks.named('runServer', JavaExec).configure {
+    standardInput = System.in
+}
+
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
     var replaceProperties = [
             minecraft_version      : minecraft_version,
