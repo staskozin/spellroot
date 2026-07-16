@@ -1,3 +1,4 @@
 {
-  "item.spellroot.ender_focus": "Ender Focus"
+  "item.spellroot.ender_focus": "Ender Focus",
+  "item.spellroot.ender_focus.charges": "Charges: %s / %s"
 }
