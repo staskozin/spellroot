@@ -2,6 +2,12 @@
 
 Все заметные изменения Spellroot перечислены в этом файле. Файл генерируется из Conventional Commits; ручные изменения будут перезаписаны при следующем выпуске.
 
+## [0.3.0](https://github.com/staskozin/spellroot/releases/tag/v0.3.0) — 2026-07-17
+
+### Возможности
+
+- **ender-focus:** добавлен анимированный маркер точки скачка ([9baf7b8e660b648](https://github.com/staskozin/spellroot/commit/9baf7b8e660b648b738ef866df9c6ac3604fe501))
+- **ender-focus:** добавлен кулдаун с ванильной индикацией ([d552c1d73d59966](https://github.com/staskozin/spellroot/commit/d552c1d73d599665a00a3f3bece874a90ea35fa1))
 ## [0.2.0](https://github.com/staskozin/spellroot/releases/tag/v0.2.0) — 2026-07-17
 
 ### Возможности
