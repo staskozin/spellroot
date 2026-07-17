@@ -237,6 +237,7 @@ public final class EnderFocusItem extends Item {
 
     private static void playSuccessEffects(ServerLevel level, Vec3 origin, Vec3 destination) {
         level.playSound(null, origin.x, origin.y, origin.z, SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 0.7F, 1.15F);
+        level.playSound(null, destination.x, destination.y, destination.z, SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 0.7F, 1.15F);
         level.playSound(null, destination.x, destination.y, destination.z, SoundEvents.AMETHYST_BLOCK_RESONATE, SoundSource.PLAYERS, 0.6F, 1.35F);
         level.sendParticles(ParticleTypes.REVERSE_PORTAL, origin.x, origin.y + 0.9, origin.z, 18, 0.25, 0.8, 0.25, 0.05);
         level.sendParticles(ParticleTypes.PORTAL, destination.x, destination.y + 0.9, destination.z, 18, 0.25, 0.8, 0.25, 0.05);
