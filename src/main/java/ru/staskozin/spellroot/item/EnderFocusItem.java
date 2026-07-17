@@ -21,6 +21,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemCooldowns;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemUseAnimation;
 import net.minecraft.world.item.TooltipFlag;
@@ -131,10 +132,18 @@ public final class EnderFocusItem extends Item {
         player.resetFallDistance();
         EnderFocusState updatedState = stateAfterSuccessfulBlink(state, player);
         stack.set(ModDataComponents.ENDER_FOCUS_STATE.get(), updatedState);
+        applyCooldownAfterSuccessfulBlink(player.getCooldowns(), stack);
         player.awardStat(Stats.ITEM_USED.get(this));
         player.gameEvent(GameEvent.TELEPORT);
         playSuccessEffects(serverLevel, origin, destination);
         return true;
+    }
+
+    public static void applyCooldownAfterSuccessfulBlink(ItemCooldowns cooldowns, ItemStack stack) {
+        int cooldownTicks = SpellrootConfig.cooldownTicks();
+        if (cooldownTicks > 0) {
+            cooldowns.addCooldown(stack, cooldownTicks);
+        }
     }
 
     @Override

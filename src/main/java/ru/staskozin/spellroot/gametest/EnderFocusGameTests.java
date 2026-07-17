@@ -9,6 +9,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Pose;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.ItemCooldowns;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
@@ -48,6 +50,7 @@ final class EnderFocusGameTests {
         testFluids(helper, survival);
         testEntitiesAreIgnored(helper, survival);
         testStateAndRecharge(helper, survival);
+        testVanillaCooldown(helper);
         helper.succeed();
     }
 
@@ -352,6 +355,49 @@ final class EnderFocusGameTests {
         CraftingInput extraInput = CraftingInput.of(3, 1,
                 List.of(first, new ItemStack(Items.ENDER_PEARL), new ItemStack(Items.AMETHYST_SHARD)));
         helper.assertFalse(recipe.matches(extraInput, helper.getLevel()), "Recharge recipe must reject extra ingredients");
+    }
+
+    private static void testVanillaCooldown(GameTestHelper helper) {
+        clearCourse(helper);
+        ServerPlayer player = (ServerPlayer) helper.makeMockServerPlayer(GameType.SURVIVAL);
+        placePlayer(helper, player, 1.5, 3.0, 1.5, 0.0F);
+
+        ItemStack focus = new ItemStack(ModItems.ENDER_FOCUS.get());
+        focus.set(ModDataComponents.ENDER_FOCUS_STATE.get(), new EnderFocusState(3, 8));
+        player.setItemInHand(InteractionHand.MAIN_HAND, focus);
+        var startResult = player.gameMode.useItem(player, helper.getLevel(), focus, InteractionHand.MAIN_HAND);
+        helper.assertTrue(startResult.consumesAction() && player.isUsingItem(),
+                "A ready focus must enter aiming through the server game mode");
+        helper.assertFalse(player.getCooldowns().isOnCooldown(focus),
+                "Starting or cancelling aim must not start an Ender Focus cooldown");
+        player.stopUsingItem();
+
+        int cooldownTicks = SpellrootConfig.cooldownTicks();
+        ItemCooldowns playerCooldowns = new ItemCooldowns();
+        EnderFocusItem.applyCooldownAfterSuccessfulBlink(playerCooldowns, focus);
+        helper.assertTrue(cooldownTicks == 0 || playerCooldowns.isOnCooldown(focus),
+                "A successful blink must start the configured vanilla cooldown");
+
+        ItemStack secondFocus = new ItemStack(ModItems.ENDER_FOCUS.get());
+        helper.assertTrue(cooldownTicks == 0 || playerCooldowns.isOnCooldown(secondFocus),
+                "All Ender Focus stacks owned by one player must share the vanilla cooldown group");
+        helper.assertFalse(playerCooldowns.isOnCooldown(new ItemStack(Items.ENDER_PEARL)),
+                "The Ender Focus cooldown must not affect unrelated items");
+
+        ItemCooldowns otherPlayerCooldowns = new ItemCooldowns();
+        helper.assertFalse(otherPlayerCooldowns.isOnCooldown(secondFocus),
+                "Ender Focus cooldowns must be isolated between players");
+
+        if (cooldownTicks > 0) {
+            for (int tick = 1; tick < cooldownTicks; tick++) {
+                playerCooldowns.tick();
+                helper.assertTrue(playerCooldowns.isOnCooldown(focus),
+                        "The vanilla cooldown must remain active until its configured final tick");
+            }
+            playerCooldowns.tick();
+            helper.assertFalse(playerCooldowns.isOnCooldown(focus),
+                    "The vanilla cooldown must end after exactly the configured number of ticks");
+        }
     }
 
     private static void assertShapeProducesLegalEndpoint(GameTestHelper helper, ServerPlayer player, BlockState state) {

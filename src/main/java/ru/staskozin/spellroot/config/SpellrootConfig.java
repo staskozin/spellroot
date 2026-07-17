@@ -7,6 +7,7 @@ public final class SpellrootConfig {
 
     public static final ModConfigSpec.DoubleValue MAX_DISTANCE;
     public static final ModConfigSpec.IntValue MAX_CHARGES;
+    public static final ModConfigSpec.IntValue COOLDOWN_TICKS;
     public static final ModConfigSpec.IntValue LEDGE_ASSIST_BLOCKS;
     public static final ModConfigSpec.BooleanValue CREATIVE_CONSUMES_CHARGES;
 
@@ -19,6 +20,9 @@ public final class SpellrootConfig {
         MAX_CHARGES = builder
                 .comment("Maximum number of charges stored in an Ender Focus.")
                 .defineInRange("max_charges", 8, 1, 64);
+        COOLDOWN_TICKS = builder
+                .comment("Shared player cooldown after a successful Ender Focus blink, in ticks.")
+                .defineInRange("cooldown_ticks", 5, 0, 1200);
         LEDGE_ASSIST_BLOCKS = builder
                 .comment("Maximum number of blocks checked above the block face hit by the aiming ray.")
                 .defineInRange("ledge_assist_blocks", 2, 0, 8);
@@ -38,6 +42,10 @@ public final class SpellrootConfig {
 
     public static double maxDistance() {
         return SPEC.isLoaded() ? MAX_DISTANCE.getAsDouble() : 10.0;
+    }
+
+    public static int cooldownTicks() {
+        return SPEC.isLoaded() ? COOLDOWN_TICKS.getAsInt() : 5;
     }
 
     public static int ledgeAssistBlocks() {
